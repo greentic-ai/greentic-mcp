@@ -8,7 +8,7 @@ repository = "https://github.com/agentic/greentic-mcp"
 documentation = "https://docs.rs/mcp-exec"
 readme = "README.md"
 keywords = ["greentic", "wasm", "executor", "mcp"]
-categories = ["wasm", "development-tools::build-utilities"]
+categories = ["wasm"]
 
 [dependencies]
 anyhow.workspace = true
