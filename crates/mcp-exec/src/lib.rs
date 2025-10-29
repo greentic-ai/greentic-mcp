@@ -1,17 +1,23 @@
+//! Executor library for loading and running `wasix:mcp` compatible Wasm components.
+//! Users supply an [`ExecConfig`] describing how to resolve artifacts and what
+//! runtime constraints to enforce, then call [`exec`] with a structured request.
+
 mod config;
+pub mod describe;
 mod error;
 mod resolve;
 mod runner;
+mod store;
 mod verify;
 
-pub use config::{
-    ExecConfig, LocalStore, OciAuth, OciStore, RuntimePolicy, ToolStore, VerifyPolicy, WargStore,
-};
+pub use config::{ExecConfig, RuntimePolicy, VerifyPolicy};
 pub use error::ExecError;
+pub use store::{ToolInfo, ToolStore};
 
-use greentic_types::tenant::TenantCtx;
+use greentic_types::TenantCtx;
 use serde_json::Value;
 
+use crate::error::RunnerError;
 use crate::runner::Runner;
 
 #[derive(Clone, Debug)]
@@ -22,6 +28,10 @@ pub struct ExecRequest {
     pub tenant: Option<TenantCtx>,
 }
 
+/// Execute a single action exported by an MCP component.
+///
+/// Resolution, verification, and runtime enforcement are performed in sequence,
+/// with detailed errors surfaced through [`ExecError`].
 pub fn exec(req: ExecRequest, cfg: &ExecConfig) -> Result<Value, ExecError> {
     let resolved = resolve::resolve(&req.component, &cfg.store)
         .map_err(|err| ExecError::resolve(&req.component, err))?;
@@ -32,23 +42,54 @@ pub fn exec(req: ExecRequest, cfg: &ExecConfig) -> Result<Value, ExecError> {
     let runner = runner::DefaultRunner::new(&cfg.runtime)
         .map_err(|err| ExecError::runner(&req.component, err))?;
 
-    runner
-        .run(
-            &req,
-            &verified,
-            runner::ExecutionContext {
-                runtime: &cfg.runtime,
-                http_enabled: cfg.http_enabled,
-            },
-        )
-        .map_err(|err| ExecError::runner(&req.component, err))
+    let result = runner.run(
+        &req,
+        &verified,
+        runner::ExecutionContext {
+            runtime: &cfg.runtime,
+            http_enabled: cfg.http_enabled,
+            tenant: req.tenant.as_ref(),
+        },
+    );
+
+    let value = match result {
+        Ok(v) => v,
+        Err(RunnerError::ActionNotFound { .. }) => {
+            return Err(ExecError::not_found(
+                req.component.clone(),
+                req.action.clone(),
+            ));
+        }
+        Err(err) => return Err(ExecError::runner(&req.component, err)),
+    };
+
+    if let Some(error_value) = value.get("error").cloned()
+        && let Some(code) = error_value
+            .get("code")
+            .and_then(Value::as_str)
+            .map(|s| s.to_string())
+    {
+        if code == "iface-error.not-found" {
+            return Err(ExecError::not_found(req.component, req.action));
+        } else {
+            return Err(ExecError::tool_error(
+                req.component,
+                req.action,
+                code,
+                value,
+            ));
+        }
+    }
+
+    Ok(value)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{LocalStore, RuntimePolicy, ToolStore, VerifyPolicy};
+    use crate::config::{RuntimePolicy, VerifyPolicy};
     use crate::error::RunnerError;
+    use crate::store::ToolStore;
     use serde_json::json;
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -82,20 +123,21 @@ mod tests {
         let wasm_path = tempdir.path().join("echo.component.wasm");
         std::fs::write(&wasm_path, b"fake wasm contents").expect("write");
 
-        let mut digests = HashMap::new();
         let digest = crate::resolve::resolve(
             "echo.component",
-            &ToolStore::Local(LocalStore::new(vec![tempdir.path().to_path_buf()])),
+            &ToolStore::LocalDir(PathBuf::from(tempdir.path())),
         )
         .expect("resolve")
         .digest;
-        digests.insert("echo.component".to_string(), digest.clone());
+
+        let mut required = HashMap::new();
+        required.insert("echo.component".to_string(), digest.clone());
 
         let cfg = ExecConfig {
-            store: ToolStore::Local(LocalStore::new(vec![PathBuf::from(tempdir.path())])),
+            store: ToolStore::LocalDir(PathBuf::from(tempdir.path())),
             security: VerifyPolicy {
                 allow_unverified: false,
-                required_digests: digests.clone(),
+                required_digests: required,
                 trusted_signers: Vec::new(),
             },
             runtime: RuntimePolicy::default(),
@@ -121,6 +163,7 @@ mod tests {
                 runner::ExecutionContext {
                     runtime: &cfg.runtime,
                     http_enabled: cfg.http_enabled,
+                    tenant: req.tenant.as_ref(),
                 },
             )
             .expect("run");

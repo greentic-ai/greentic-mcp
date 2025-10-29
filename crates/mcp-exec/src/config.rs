@@ -1,6 +1,10 @@
+//! Configuration primitives describing how the executor resolves, verifies, and
+//! runs Wasm components.
+
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::time::Duration;
+
+use crate::store::ToolStore;
 
 /// Configuration for a single executor invocation.
 #[derive(Clone, Debug)]
@@ -9,55 +13,6 @@ pub struct ExecConfig {
     pub security: VerifyPolicy,
     pub runtime: RuntimePolicy,
     pub http_enabled: bool,
-}
-
-/// Supported tool stores that can be resolved into runnable artifacts.
-#[derive(Clone, Debug)]
-pub enum ToolStore {
-    Local(LocalStore),
-    Oci(OciStore),
-    Warg(WargStore),
-}
-
-/// Local filesystem lookup strategy.
-#[derive(Clone, Debug)]
-pub struct LocalStore {
-    pub search_paths: Vec<PathBuf>,
-    pub expected_extension: Option<String>,
-}
-
-impl LocalStore {
-    pub fn new(search_paths: Vec<PathBuf>) -> Self {
-        Self {
-            search_paths,
-            expected_extension: Some("wasm".to_string()),
-        }
-    }
-}
-
-/// OCI registry configuration.
-#[derive(Clone, Debug)]
-pub struct OciStore {
-    pub registry: String,
-    pub repository: String,
-    pub reference: Option<String>,
-    pub auth: Option<OciAuth>,
-}
-
-/// Authentication options for OCI registries.
-#[derive(Clone, Debug)]
-pub enum OciAuth {
-    Anonymous,
-    BearerToken(String),
-    UsernamePassword { username: String, password: String },
-}
-
-/// Warg registry configuration.
-#[derive(Clone, Debug)]
-pub struct WargStore {
-    pub server: String,
-    pub package: String,
-    pub reference: Option<String>,
 }
 
 /// Policy describing how artifacts must be verified prior to execution.

@@ -2,9 +2,16 @@
 name = "mcp-exec"
 version = "0.1.0"
 edition = "2024"
-license = "MIT OR Apache-2.0"
+license = "MIT"
+description = "Greentic executor for running wasix:mcp-compatible WebAssembly components with policy-driven verification and sandboxing."
+repository = "https://github.com/agentic/greentic-mcp"
+documentation = "https://docs.rs/mcp-exec"
+readme = "README.md"
+keywords = ["greentic", "wasm", "executor", "mcp"]
+categories = ["wasm", "development-tools::build-utilities"]
 
 [dependencies]
+anyhow.workspace = true
 async-trait.workspace = true
 hex.workspace = true
 serde.workspace = true
@@ -15,7 +22,9 @@ tokio.workspace = true
 tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
-greentic-types = { path = "../greentic-types" }
+greentic-types.workspace = true
+greentic-interfaces.workspace = true
+reqwest.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

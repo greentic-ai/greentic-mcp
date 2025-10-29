@@ -1,6 +1,10 @@
+//! Structured error types produced across the resolution, verification, and runtime pipeline.
+
 use std::io;
 use std::time::Duration;
 
+use anyhow::Error as AnyError;
+use serde_json::Value;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -22,6 +26,15 @@ pub enum ExecError {
         component: String,
         #[source]
         source: RunnerError,
+    },
+    #[error("action `{action}` not found on component `{component}`")]
+    NotFound { component: String, action: String },
+    #[error("tool `{component}` returned error `{code}` for action `{action}`")]
+    Tool {
+        component: String,
+        action: String,
+        code: String,
+        payload: Value,
     },
 }
 
@@ -46,6 +59,27 @@ impl ExecError {
             source,
         }
     }
+
+    pub fn not_found(component: impl Into<String>, action: impl Into<String>) -> Self {
+        Self::NotFound {
+            component: component.into(),
+            action: action.into(),
+        }
+    }
+
+    pub fn tool_error(
+        component: impl Into<String>,
+        action: impl Into<String>,
+        code: impl Into<String>,
+        payload: Value,
+    ) -> Self {
+        Self::Tool {
+            component: component.into(),
+            action: action.into(),
+            code: code.into(),
+            payload,
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -54,10 +88,8 @@ pub enum ResolveError {
     NotFound,
     #[error("I/O error while reading artifact")]
     Io(#[from] io::Error),
-    #[error("OCI resolver is not yet implemented")]
-    OciNotImplemented,
-    #[error("Warg resolver is not yet implemented")]
-    WargNotImplemented,
+    #[error("tool store error: {0}")]
+    Store(AnyError),
 }
 
 #[derive(Debug, Error)]
@@ -76,6 +108,8 @@ pub enum RunnerError {
     Wasmtime(#[from] wasmtime::Error),
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("action `{action}` not implemented by the tool")]
+    ActionNotFound { action: String },
     #[error("runner is not implemented for this configuration")]
     NotImplemented,
 }
