@@ -1,0 +1,21 @@
+[package]
+name = "mcp-exec"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+async-trait.workspace = true
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+greentic-types = { path = "../greentic-types" }
+
+[dev-dependencies]
+tempfile.workspace = true
