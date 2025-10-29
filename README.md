@@ -90,7 +90,7 @@ The online weather integration test is skipped unless `RUN_ONLINE_TESTS=1` is se
 cargo publish -p mcp-exec
 ```
 
-The crate metadata mirrors the approach used in `greentic-types`, so publishing from the workspace is a single command. Releases tagged through GitHub (or a manual `workflow_dispatch`) also trigger `.github/workflows/publish.yml`, which runs tests and publishes with the repository's `CRATES_IO_TOKEN` secret.
+The crate metadata mirrors the approach used in `greentic-types`, so publishing from the workspace is a single command. Releases tagged through GitHub (or a manual `workflow_dispatch`) also trigger `.github/workflows/publish.yml`, which runs tests and publishes with the repository's `CARGO_REGISTRY_TOKEN` secret.
 
 ## Roadmap
 
