@@ -47,11 +47,13 @@ mod tests {
 
     #[test]
     fn rejects_unverified_when_policy_requires_digest() {
-        let mut policy = VerifyPolicy::default();
-        policy.allow_unverified = false;
-        policy
-            .required_digests
-            .insert("tool".into(), "expected-digest".into());
+        let mut required = std::collections::HashMap::new();
+        required.insert("tool".into(), "expected-digest".into());
+        let policy = VerifyPolicy {
+            allow_unverified: false,
+            required_digests: required,
+            ..Default::default()
+        };
 
         let tmp = tempfile::tempdir().expect("tempdir");
         let wasm_path = tmp.path().join("tool.wasm");
@@ -66,8 +68,10 @@ mod tests {
 
     #[test]
     fn allows_unsigned_when_policy_permits() {
-        let mut policy = VerifyPolicy::default();
-        policy.allow_unverified = true;
+        let policy = VerifyPolicy {
+            allow_unverified: true,
+            ..Default::default()
+        };
 
         let tmp = tempfile::tempdir().expect("tempdir");
         let wasm_path = tmp.path().join("tool.wasm");
