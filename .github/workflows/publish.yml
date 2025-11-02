@@ -1,28 +1,44 @@
-name: publish
+name: Publish crates (single or workspace)
 
 on:
+  push:
+    branches: [ master ]
+    tags: [ "v*" ]   # optional: legacy; our per-crate tags are <name>-vX.Y.Z
   workflow_dispatch:
-  release:
-    types:
-      - published
 
 jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Lint & Test
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo build --workspace --all-features
+          cargo test --workspace --all-features -- --nocapture
+
   publish:
+    if: github.event_name == 'push'
+    # Always publish off the exact commit we tested.
+    needs: build-test
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      CARGO_TERM_COLOR: always
+      id-token: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # Idempotent crates.io publish: only publishes when versions changed.
+      - name: Publish changed crates
+        uses: katyo/publish-crates@v2
         with:
-          toolchain: stable
-          profile: minimal
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
-      - name: Publish mcp-exec
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish -p mcp-exec
+          path: .
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          ignore-unpublished-changes: true   # succeed when nothing to publish
+          check-repo: true                   # verify real version bumps
+          dry-run: false

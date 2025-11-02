@@ -84,13 +84,12 @@ RUN_ONLINE_TESTS=1 cargo test -p mcp-exec --test online_weather
 
 The online weather integration test is skipped unless `RUN_ONLINE_TESTS=1` is set.
 
-### Publishing
+## Releases & Publishing
 
-```
-cargo publish -p mcp-exec
-```
-
-The crate metadata mirrors the approach used in `greentic-types`, so publishing from the workspace is a single command. Releases tagged through GitHub (or a manual `workflow_dispatch`) also trigger `.github/workflows/publish.yml`, which runs tests and publishes with the repository's `CARGO_REGISTRY_TOKEN` secret.
+- Versions are taken directly from each crate's `Cargo.toml`.
+- When a commit lands on `master`, any crate whose manifest version changed gets a Git tag `<crate>-v<version>` pushed automatically.
+- The publish workflow then runs, linting and testing before calling `katyo/publish-crates@v2` to publish updated crates to crates.io.
+- Publishing is idempotent; if the specified version already exists, the workflow exits successfully without pushing anything new.
 
 ## Roadmap
 
