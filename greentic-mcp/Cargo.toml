@@ -1,6 +1,6 @@
 [package]
 name = "greentic-mcp"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 license = "MIT"
 description = "MCP ToolMap + WASIX/WASI executor bridge"
