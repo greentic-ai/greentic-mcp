@@ -1,0 +1,34 @@
+[package]
+name = "greentic-mcp"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "MCP ToolMap + WASIX/WASI executor bridge"
+repository = "https://github.com/agentic/greentic-mcp"
+readme = "README.md"
+
+[features]
+default = ["wasi"]
+wasi = []
+
+[dependencies]
+anyhow.workspace = true
+indexmap.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml_bw.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+greentic-types.workspace = true
+greentic-interfaces.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lib]
+name = "greentic_mcp"
+path = "src/lib.rs"

@@ -22,13 +22,17 @@ use serde_json::json;
 let tenant = TenantCtx {
     env: EnvId("dev".into()),
     tenant: TenantId("acme".into()),
+    tenant_id: TenantId("acme".into()),
     team: None,
+    team_id: None,
     user: None,
+    user_id: None,
     trace_id: None,
     correlation_id: None,
     deadline: None,
     attempt: 0,
     idempotency_key: None,
+    impersonation: None,
 };
 
 let cfg = ExecConfig {

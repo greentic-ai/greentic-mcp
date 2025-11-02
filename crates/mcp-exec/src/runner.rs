@@ -329,13 +329,17 @@ mod tests {
         TenantCtx {
             env: EnvId("dev".into()),
             tenant: TenantId("tenant".into()),
+            tenant_id: TenantId("tenant".into()),
             team: None,
+            team_id: None,
             user: None,
+            user_id: None,
             trace_id: Some("trace-123".into()),
             correlation_id: None,
             deadline: None,
             attempt: 0,
             idempotency_key: None,
+            impersonation: None,
         }
     }
 

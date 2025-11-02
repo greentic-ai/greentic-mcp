@@ -63,21 +63,22 @@ pub fn exec(req: ExecRequest, cfg: &ExecConfig) -> Result<Value, ExecError> {
         Err(err) => return Err(ExecError::runner(&req.component, err)),
     };
 
-    if let Some(error_value) = value.get("error").cloned()
-        && let Some(code) = error_value
+    if let Some(error_value) = value.get("error").cloned() {
+        if let Some(code) = error_value
             .get("code")
             .and_then(Value::as_str)
             .map(|s| s.to_string())
-    {
-        if code == "iface-error.not-found" {
-            return Err(ExecError::not_found(req.component, req.action));
-        } else {
-            return Err(ExecError::tool_error(
-                req.component,
-                req.action,
-                code,
-                value,
-            ));
+        {
+            if code == "iface-error.not-found" {
+                return Err(ExecError::not_found(req.component, req.action));
+            } else {
+                return Err(ExecError::tool_error(
+                    req.component,
+                    req.action,
+                    code,
+                    value,
+                ));
+            }
         }
     }
 
