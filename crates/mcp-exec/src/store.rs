@@ -85,23 +85,27 @@ fn list_local(root: &Path) -> Result<Vec<ToolInfo>> {
             continue;
         }
 
-        if matches!(
+        if !matches!(
             path.extension().and_then(|ext| ext.to_str()),
             Some(ext) if ext.eq_ignore_ascii_case("wasm")
         ) {
-            if let Some(name) = path
-                .file_stem()
-                .and_then(|os| os.to_str())
-                .map(|s| s.to_string())
-            {
-                let sha = compute_sha256(&path).ok();
-                items.push(ToolInfo {
-                    name,
-                    path: path.clone(),
-                    sha256: sha,
-                });
-            }
+            continue;
         }
+
+        let Some(name) = path
+            .file_stem()
+            .and_then(|os| os.to_str())
+            .map(|s| s.to_string())
+        else {
+            continue;
+        };
+
+        let sha = compute_sha256(&path).ok();
+        items.push(ToolInfo {
+            name,
+            path: path.clone(),
+            sha256: sha,
+        });
     }
 
     items.sort_by(|a, b| a.name.cmp(&b.name));
