@@ -5,14 +5,14 @@ use std::time::Instant;
 use greentic_interfaces::host_import_v0_2::{self as host_api, HostImports};
 use greentic_types::TenantCtx;
 use host_api::greentic::host_import::imports;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Engine, Store};
 
+use crate::ExecRequest;
 use crate::config::RuntimePolicy;
 use crate::error::RunnerError;
 use crate::verify::VerifiedArtifact;
-use crate::ExecRequest;
 
 pub struct ExecutionContext<'a> {
     pub runtime: &'a RuntimePolicy,
@@ -205,8 +205,8 @@ impl HostImports for StoreState {
             return Ok(Err(imports::IfaceError::Denied));
         }
 
-        use reqwest::header::{HeaderName, HeaderValue};
         use reqwest::Method;
+        use reqwest::header::{HeaderName, HeaderValue};
 
         let client = match self.http_client() {
             Ok(client) => client,

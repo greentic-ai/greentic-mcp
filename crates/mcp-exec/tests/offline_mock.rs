@@ -1,4 +1,4 @@
-use mcp_exec::describe::{describe_tool, Maybe};
+use mcp_exec::describe::{Maybe, describe_tool};
 use mcp_exec::{ExecConfig, ToolStore, VerifyPolicy};
 use std::path::PathBuf;
 

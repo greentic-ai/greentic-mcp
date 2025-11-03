@@ -7,10 +7,10 @@ members = [
 resolver = "2"
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 license = "MIT"
 repository = "https://github.com/agentic/greentic-mcp"
-version = "0.1.5"
+version = "0.2.0"
 
 [workspace.dependencies]
 anyhow = "1.0"
@@ -22,12 +22,16 @@ sha2 = "0.10"
 thiserror = "2.0"
 tokio = { version = "1.37", features = ["rt-multi-thread", "macros", "time"] }
 tracing = "0.1"
-wasmtime = { version = "37", default-features = false, features = ["component-model", "cranelift", "runtime", "std"] }
-wasmtime-wasi = { version = "37", default-features = false, features = ["p1"] }
+wasmtime = { version = "38.0.3", default-features = false, features = ["component-model", "cranelift", "runtime", "std"] }
+wasmtime-wasi = { version = "38.0.3", default-features = false, features = ["p1"] }
 tempfile = "3.23"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "gzip", "brotli", "deflate", "rustls-tls"] }
-greentic-types = "0.1"
-greentic-interfaces = { version = "0.4.8", default-features = true }
+greentic-types = "0.2"
+greentic-interfaces = { version = "0.4.16", default-features = true }
 indexmap = "2"
 rand = { version = "0.9", features = ["std"] }
 serde_yaml_bw = "2"
+
+[patch.crates-io]
+greentic-types = { path = "../greentic-types" }
+greentic-interfaces = { path = "../greentic-interfaces/crates/greentic-interfaces" }

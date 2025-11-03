@@ -4,8 +4,8 @@ use tokio::task::JoinError;
 use tokio::time::{sleep, timeout};
 use tracing::instrument;
 use wasmtime::{Engine, Linker, Module, Store, Trap};
-use wasmtime_wasi::p1::{self, WasiP1Ctx};
 use wasmtime_wasi::WasiCtxBuilder;
+use wasmtime_wasi::p1::{self, WasiP1Ctx};
 
 use crate::retry;
 use crate::types::{McpError, ToolInput, ToolOutput, ToolRef};
