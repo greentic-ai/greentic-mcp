@@ -76,6 +76,7 @@ Pulled from crates.io; provides `TenantCtx`, identifiers, and supporting types f
 ## Development
 
 ```bash
+rustup target add wasm32-wasip2
 cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo test

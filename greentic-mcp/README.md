@@ -8,9 +8,9 @@ Wasmtime with per-tool timeouts, retry hints, and transient error handling.
 The crate leans on the shared contracts published in
 [`greentic-types`](https://docs.rs/greentic-types) and the WIT definitions plus
 generated bindings in [`greentic-interfaces`](https://docs.rs/greentic-interfaces).
-When a tool exposes the standard component ABI, the same bindings can be used to
-reach richer type-safe interfaces. Until those tools are widespread this crate
-ships a pointer/length fallback ABI that keeps local tool development unblocked.
+Tools are compiled for the WASI Preview2 target (`wasm32-wasip2`) and export a
+canonical entrypoint that accepts and returns UTF-8 JSON payloads, so hosts no
+longer have to marshal pointer/length pairs manually.
 
 ## Tool map configuration
 
@@ -53,7 +53,7 @@ timeouts into `McpError::Timeout`.
 
 ## ABI contracts
 
-See [ABI.md](ABI.md) for details on the fallback pointer/length interface used
-by the integration tests. When a tool exports the canonical Greentic component
-API, use the bindings from `greentic-interfaces` to avoid manual pointer
-management and to return strongly-typed `Outcome<T>` values.
+See [ABI.md](ABI.md) for the exact contract implemented by the integration
+tests. When a tool exports the richer Greentic component API, use the bindings
+from `greentic-interfaces` to avoid manual JSON marshalling and to work with
+strongly-typed `Outcome<T>` values.

@@ -13,7 +13,7 @@ fn wasm_target_available() -> bool {
         match output {
             Ok(out) if out.status.success() => {
                 let targets = String::from_utf8_lossy(&out.stdout);
-                targets.lines().any(|line| line.trim() == "wasm32-wasi")
+                targets.lines().any(|line| line.trim() == "wasm32-wasip2")
             }
             _ => false,
         }
@@ -30,12 +30,12 @@ fn build_echo_wasm() -> Option<PathBuf> {
             let fixture_dir =
                 PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/echo_tool");
             let status = Command::new("cargo")
-                .args(["build", "--release", "--target", "wasm32-wasi"])
+                .args(["build", "--release", "--target", "wasm32-wasip2"])
                 .current_dir(&fixture_dir)
                 .status()
                 .expect("build echo fixture");
             assert!(status.success(), "echo tool build failed");
-            Some(fixture_dir.join("target/wasm32-wasi/release/echo_tool.wasm"))
+            Some(fixture_dir.join("target/wasm32-wasip2/release/echo_tool.wasm"))
         })
         .clone()
 }
@@ -55,7 +55,7 @@ fn tool_ref(name: &str) -> Option<ToolRef> {
 #[tokio::test]
 async fn echo_ok() {
     let Some(tool) = tool_ref("echo") else {
-        eprintln!("skipping echo_ok: wasm32-wasi target not installed");
+        eprintln!("skipping echo_ok: wasm32-wasip2 target not installed");
         return;
     };
     let config = ToolMapConfig {
@@ -78,7 +78,7 @@ async fn echo_ok() {
 #[tokio::test]
 async fn echo_transient_retries() {
     let Some(mut tool) = tool_ref("echo-flaky") else {
-        eprintln!("skipping echo_transient_retries: wasm32-wasi target not installed");
+        eprintln!("skipping echo_transient_retries: wasm32-wasip2 target not installed");
         return;
     };
     tool.max_retries = Some(3);
@@ -99,7 +99,7 @@ async fn echo_transient_retries() {
 #[tokio::test]
 async fn echo_timeout() {
     let Some(mut tool) = tool_ref("echo-timeout") else {
-        eprintln!("skipping echo_timeout: wasm32-wasi target not installed");
+        eprintln!("skipping echo_timeout: wasm32-wasip2 target not installed");
         return;
     };
     tool.timeout_ms = Some(50);

@@ -280,7 +280,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa961b519f0b462e3a3b4a34b64d119eeaca1d59af726fe450bbba07a9fc0a1"
 dependencies = [
- "thiserror 2.0.17",
+ "thiserror",
 ]
 
 [[package]]
@@ -767,14 +767,14 @@ dependencies = [
 
 [[package]]
 name = "greentic-interfaces"
-version = "0.4.17"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fc6fe180965561bb887e3dd94142fbd6f5743d73019394b0eb57562e0984fa9"
+checksum = "a855a4f822e2cea468a90ab254e4db12cbc1c2c24da98d1b5680e7c8254ba389"
 dependencies = [
  "anyhow",
  "greentic-types",
  "semver",
- "thiserror 2.0.17",
+ "thiserror",
  "time",
  "wasmtime",
  "wit-bindgen 0.47.0",
@@ -795,7 +795,7 @@ dependencies = [
  "serde_json",
  "serde_yaml_bw",
  "tempfile",
- "thiserror 2.0.17",
+ "thiserror",
  "tokio",
  "tracing",
  "wasmtime",
@@ -804,14 +804,14 @@ dependencies = [
 
 [[package]]
 name = "greentic-types"
-version = "0.2.0"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7aa85edde301f5f4fdc786e97e768fdfe59393bb4b417586f874174ecd6e123a"
+checksum = "ca06a03906add513c53951ba44f9d83efef547029cd09e61c89d9fff9ecd3338"
 dependencies = [
  "semver",
  "serde",
  "serde_with",
- "thiserror 2.0.17",
+ "thiserror",
  "time",
 ]
 
@@ -1128,9 +1128,9 @@ checksum = "469fb0b9cefa57e3ef31275ee7cacb78f2fdca44e4765491884a2b119d4eb130"
 
 [[package]]
 name = "iri-string"
-version = "0.7.8"
+version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbc5ebe9c3a1a7a5127f920a418f7585e9e758e911d0466ed004f393b0e380b2"
+checksum = "4f867b9d1d896b67beb18518eda36fdb77a32ea590de864f1325b294a6d14397"
 dependencies = [
  "memchr",
  "serde",
@@ -1160,12 +1160,6 @@ dependencies = [
  "once_cell",
  "wasm-bindgen",
 ]
-
-[[package]]
-name = "leb128"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
 name = "leb128fmt"
@@ -1248,7 +1242,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "tempfile",
- "thiserror 2.0.17",
+ "thiserror",
  "tokio",
  "tracing",
  "wasmtime",
@@ -1434,7 +1428,7 @@ dependencies = [
  "rustc-hash",
  "rustls",
  "socket2",
- "thiserror 2.0.17",
+ "thiserror",
  "tokio",
  "tracing",
  "web-time",
@@ -1455,7 +1449,7 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "slab",
- "thiserror 2.0.17",
+ "thiserror",
  "tinyvec",
  "tracing",
  "web-time",
@@ -1663,9 +1657,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.34"
+version = "0.23.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a9586e9ee2b4f8fab52a0048ca7334d7024eef48e2cb9407e3497bb7cab7fa7"
+checksum = "533f54bc6a7d4f647e46ad909549eda97bf5afc1585190ef692b4286b198bd8f"
 dependencies = [
  "once_cell",
  "ring",
@@ -1812,9 +1806,9 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml_bw"
-version = "2.4.1"
+version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e625d4f8798a3707dc8ec750f593156ff7605b9c1f07a04c2e66d75ef0ed2b3"
+checksum = "b3dc81c391abf99881eb27ee73957d4aaa751d0f242548bfe6148ca360b23448"
 dependencies = [
  "base64",
  "indexmap",
@@ -1893,9 +1887,9 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "syn"
-version = "2.0.108"
+version = "2.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da58917d35242480a05c2897064da0a80589a2a0476c9a3f2fdc83b53502e917"
+checksum = "2f17c7e013e88258aa9543dcbe81aca68a667a9ac37cd69c9fbc07858bfe0e2f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1968,31 +1962,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
-dependencies = [
- "thiserror-impl 1.0.69",
-]
-
-[[package]]
-name = "thiserror"
 version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f63587ca0f12b72a0600bcba1d40081f830876000bb46dd2337a3051618f4fc8"
 dependencies = [
- "thiserror-impl 2.0.17",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
+ "thiserror-impl",
 ]
 
 [[package]]
@@ -2509,7 +2483,7 @@ dependencies = [
  "pulley-interpreter",
  "smallvec",
  "target-lexicon",
- "thiserror 2.0.17",
+ "thiserror",
  "wasmparser 0.239.0",
  "wasmtime-environ",
  "wasmtime-internal-math",
@@ -2645,13 +2619,12 @@ dependencies = [
  "io-lifetimes",
  "rustix 1.1.2",
  "system-interface",
- "thiserror 2.0.17",
+ "thiserror",
  "tokio",
  "tracing",
  "url",
  "wasmtime",
  "wasmtime-wasi-io",
- "wiggle",
  "windows-sys 0.60.2",
 ]
 
@@ -2666,15 +2639,6 @@ dependencies = [
  "bytes",
  "futures",
  "wasmtime",
-]
-
-[[package]]
-name = "wast"
-version = "35.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ef140f1b49946586078353a453a1d28ba90adfc54dde75710bc1931de204d68"
-dependencies = [
- "leb128",
 ]
 
 [[package]]
@@ -2707,47 +2671,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wiggle"
-version = "38.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8748ba1418928ee5cf4d6cec181bb2b044cb00931a9e5bf5252ed9f31013aacd"
-dependencies = [
- "anyhow",
- "async-trait",
- "bitflags",
- "thiserror 2.0.17",
- "tracing",
- "wasmtime",
- "wiggle-macro",
-]
-
-[[package]]
-name = "wiggle-generate"
-version = "38.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1098f722216cfe33dd6c68d3ee16ca7fcbdc1330d9022340b83266067ad0a65b"
-dependencies = [
- "anyhow",
- "heck",
- "proc-macro2",
- "quote",
- "syn",
- "witx",
-]
-
-[[package]]
-name = "wiggle-macro"
-version = "38.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043f56e8ee5ac5b569dcaa242b408fdc1dbe3d3ef992c7777fe4a5bbdf3d1913"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "wiggle-generate",
-]
-
-[[package]]
 name = "winapi-util"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2769,7 +2692,7 @@ dependencies = [
  "regalloc2",
  "smallvec",
  "target-lexicon",
- "thiserror 2.0.17",
+ "thiserror",
  "wasmparser 0.239.0",
  "wasmtime-environ",
  "wasmtime-internal-cranelift",
@@ -3121,18 +3044,6 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser 0.240.0",
-]
-
-[[package]]
-name = "witx"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e366f27a5cabcddb2706a78296a40b8fcc451e1a6aba2fc1d94b4a01bdaaef4b"
-dependencies = [
- "anyhow",
- "log",
- "thiserror 1.0.69",
- "wast",
 ]
 
 [[package]]
