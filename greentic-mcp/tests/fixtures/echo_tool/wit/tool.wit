@@ -1,9 +1,9 @@
 package greentic:echo;
 
 interface tool-api {
-    tool-invoke: func(input: string) -> string
+    tool-invoke: func(input: string) -> string;
 }
 
 world tool {
-    export tool-api
+    export tool-api;
 }
