@@ -99,16 +99,26 @@ EOF
 install_pre_push_hook
 
 step "Toolchain"
-need cargo || {
-  echo "cargo is required for local checks"
-  exit 1
-}
-need rustc || {
-  echo "rustc is required for local checks"
-  exit 1
-}
-cargo --version
-rustc --version
+if need cargo >/dev/null 2>&1; then
+  cargo --version
+else
+  if [[ "$STRICT" == "1" ]]; then
+    echo "[fatal] cargo is required for local checks"
+    exit 1
+  fi
+  echo "[skip] cargo not found; skipping local checks (set LOCAL_CHECK_STRICT=1 to require)"
+  exit 0
+fi
+if need rustc >/dev/null 2>&1; then
+  rustc --version
+else
+  if [[ "$STRICT" == "1" ]]; then
+    echo "[fatal] rustc is required for local checks"
+    exit 1
+  fi
+  echo "[skip] rustc not found; skipping local checks (set LOCAL_CHECK_STRICT=1 to require)"
+  exit 0
+fi
 if need wasm-tools >/dev/null 2>&1; then
   wasm-tools --version
 else
