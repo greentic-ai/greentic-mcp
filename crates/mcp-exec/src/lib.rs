@@ -48,7 +48,6 @@ pub fn exec(req: ExecRequest, cfg: &ExecConfig) -> Result<Value, ExecError> {
         runner::ExecutionContext {
             runtime: &cfg.runtime,
             http_enabled: cfg.http_enabled,
-            tenant: req.tenant.as_ref(),
         },
     );
 
@@ -163,7 +162,6 @@ mod tests {
                 runner::ExecutionContext {
                     runtime: &cfg.runtime,
                     http_enabled: cfg.http_enabled,
-                    tenant: req.tenant.as_ref(),
                 },
             )
             .expect("run");

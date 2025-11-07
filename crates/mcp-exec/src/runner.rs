@@ -2,10 +2,8 @@
 
 use std::time::Instant;
 
-use greentic_interfaces::host_import_v0_2::{self as host_api, HostImports};
-use greentic_types::TenantCtx;
-use host_api::greentic::host_import::imports;
-use serde_json::{Value, json};
+use greentic_interfaces::runner_host_v1::{self as runner_host, RunnerHost};
+use serde_json::Value;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Engine, Store};
 
@@ -17,7 +15,6 @@ use crate::verify::VerifiedArtifact;
 pub struct ExecutionContext<'a> {
     pub runtime: &'a RuntimePolicy,
     pub http_enabled: bool,
-    pub tenant: Option<&'a TenantCtx>,
 }
 
 pub trait Runner: Send + Sync {
@@ -73,10 +70,10 @@ impl Runner for DefaultRunner {
         // secrets, telemetry, and HTTP helpers. Each import is handled by the
         // `HostImports` implementation on `StoreState` with conservative
         // defaults that keep the executor safe to embed.
-        host_api::add_to_linker(&mut linker, |state: &mut StoreState| state)
+        runner_host::add_to_linker(&mut linker, |state: &mut StoreState| state)
             .map_err(RunnerError::from)?;
 
-        let mut store = Store::new(&self.engine, StoreState::new(ctx.http_enabled, ctx.tenant));
+        let mut store = Store::new(&self.engine, StoreState::new(ctx.http_enabled));
 
         let instance = linker.instantiate(&mut store, &component)?;
         let exec = instance.get_typed_func::<(String, String), (String,)>(&mut store, "exec")?;
@@ -98,27 +95,20 @@ impl Runner for DefaultRunner {
 
 struct StoreState {
     http_enabled: bool,
-    tenant_ctx: Option<imports::TenantCtx>,
     http_client: Option<reqwest::blocking::Client>,
 }
 
 impl StoreState {
-    fn new(http_enabled: bool, tenant: Option<&TenantCtx>) -> Self {
-        let tenant_ctx = tenant.map(convert_tenant_ctx);
+    fn new(http_enabled: bool) -> Self {
         Self {
             http_enabled,
-            tenant_ctx,
             http_client: None,
         }
     }
 
-    fn default_tenant_ctx(&self) -> Option<imports::TenantCtx> {
-        self.tenant_ctx.clone()
-    }
-
-    fn http_client(&mut self) -> Result<&reqwest::blocking::Client, imports::IfaceError> {
+    fn http_client(&mut self) -> Result<&reqwest::blocking::Client, String> {
         if !self.http_enabled {
-            return Err(imports::IfaceError::Denied);
+            return Err("http-disabled".into());
         }
 
         if self.http_client.is_none() {
@@ -128,7 +118,7 @@ impl StoreState {
                 .use_rustls_tls()
                 .timeout(std::time::Duration::from_secs(30))
                 .build()
-                .map_err(|_| imports::IfaceError::Unavailable)?;
+                .map_err(|err| format!("http-client: {err}"))?;
             self.http_client = Some(client);
         }
 
@@ -136,167 +126,86 @@ impl StoreState {
     }
 }
 
-fn convert_tenant_ctx(ctx: &TenantCtx) -> imports::TenantCtx {
-    imports::TenantCtx {
-        tenant: ctx.tenant.0.clone(),
-        team: ctx.team.as_ref().map(|v| v.0.clone()),
-        user: ctx.user.as_ref().map(|v| v.0.clone()),
-        deployment: imports::DeploymentCtx {
-            cloud: imports::Cloud::Other,
-            region: None,
-            platform: imports::Platform::Other,
-            runtime: Some(ctx.env.0.clone()),
-        },
-        trace_id: ctx.trace_id.clone(),
-    }
-}
-
-impl HostImports for StoreState {
-    fn secrets_get(
+impl RunnerHost for StoreState {
+    fn http_request(
         &mut self,
-        key: String,
-        ctx: Option<imports::TenantCtx>,
-    ) -> wasmtime::Result<Result<String, imports::IfaceError>> {
-        let _ = (key, ctx.or_else(|| self.default_tenant_ctx()));
-        Ok(Err(imports::IfaceError::NotFound))
-    }
-
-    fn telemetry_emit(
-        &mut self,
-        span_json: String,
-        ctx: Option<imports::TenantCtx>,
-    ) -> wasmtime::Result<()> {
-        if let Some(tenant) = ctx.or_else(|| self.default_tenant_ctx()) {
-            tracing::debug!(
-                tenant = tenant.tenant.as_str(),
-                trace_id = tenant.trace_id.as_deref().unwrap_or(""),
-                "telemetry::emit from component"
-            );
-        } else {
-            tracing::debug!("telemetry::emit from component");
-        }
-        tracing::trace!(payload = span_json);
-        Ok(())
-    }
-
-    fn tool_invoke(
-        &mut self,
-        tool: String,
-        action: String,
-        args_json: String,
-        ctx: Option<imports::TenantCtx>,
-    ) -> wasmtime::Result<Result<String, imports::IfaceError>> {
-        let _ = (
-            tool,
-            action,
-            args_json,
-            ctx.or_else(|| self.default_tenant_ctx()),
-        );
-        Ok(Err(imports::IfaceError::Unavailable))
-    }
-
-    fn http_fetch(
-        &mut self,
-        req: imports::HttpRequest,
-        ctx: Option<imports::TenantCtx>,
-    ) -> wasmtime::Result<Result<imports::HttpResponse, imports::IfaceError>> {
-        let _ = ctx.or_else(|| self.default_tenant_ctx());
+        method: String,
+        url: String,
+        headers: Vec<String>,
+        body: Option<Vec<u8>>,
+    ) -> wasmtime::Result<Result<Vec<u8>, String>> {
         if !self.http_enabled {
-            return Ok(Err(imports::IfaceError::Denied));
+            return Ok(Err("http-disabled".into()));
         }
 
         use reqwest::Method;
-        use reqwest::header::{HeaderName, HeaderValue};
 
         let client = match self.http_client() {
             Ok(client) => client,
             Err(err) => return Ok(Err(err)),
         };
 
-        let method = match Method::from_bytes(req.method.as_bytes()) {
+        let method = match Method::from_bytes(method.as_bytes()) {
             Ok(method) => method,
-            Err(_) => return Ok(Err(imports::IfaceError::InvalidArg)),
+            Err(_) => return Ok(Err("invalid-method".into())),
         };
 
-        let mut builder = client.request(method, &req.url);
+        let builder = client.request(method, &url);
+        let mut builder = match apply_headers(builder, &headers) {
+            Ok(builder) => builder,
+            Err(err) => return Ok(Err(err)),
+        };
 
-        if let Some(headers_json) = req.headers_json.as_ref() {
-            let parsed: serde_json::Map<String, Value> = match serde_json::from_str(headers_json) {
-                Ok(map) => map,
-                Err(_) => return Ok(Err(imports::IfaceError::InvalidArg)),
-            };
-
-            for (name, value) in parsed.iter() {
-                let header_name = match HeaderName::from_bytes(name.as_bytes()) {
-                    Ok(name) => name,
-                    Err(_) => return Ok(Err(imports::IfaceError::InvalidArg)),
-                };
-                let header_value = match value {
-                    Value::String(s) => HeaderValue::from_str(s),
-                    Value::Array(items) => {
-                        let joined = items
-                            .iter()
-                            .filter_map(Value::as_str)
-                            .collect::<Vec<_>>()
-                            .join(",");
-                        HeaderValue::from_str(&joined)
-                    }
-                    other => HeaderValue::from_str(&other.to_string()),
-                }
-                .map_err(|_| imports::IfaceError::InvalidArg)?;
-
-                builder = builder.header(header_name, header_value);
-            }
-        }
-
-        if let Some(body) = req.body.clone() {
+        if let Some(body) = body {
             builder = builder.body(body);
         }
 
         let response = match builder.send() {
             Ok(resp) => resp,
-            Err(_) => return Ok(Err(imports::IfaceError::Unavailable)),
+            Err(err) => return Ok(Err(format!("request: {err}"))),
         };
 
-        let response = match response.error_for_status() {
-            Ok(resp) => resp,
-            Err(_) => return Ok(Err(imports::IfaceError::Unavailable)),
-        };
-
-        let status = response.status().as_u16();
-        let mut header_map = serde_json::Map::new();
-        for (key, value) in response.headers().iter() {
-            let entry = header_map
-                .entry(key.as_str().to_string())
-                .or_insert_with(|| json!([]));
-            if let Value::Array(array) = entry {
-                array.push(Value::String(
-                    value.to_str().unwrap_or_default().to_string(),
-                ));
-            }
+        if !response.status().is_success() {
+            return Ok(Err(format!("status-{}", response.status().as_u16())));
         }
-        let headers_json = if header_map.is_empty() {
-            None
-        } else {
-            serde_json::to_string(&header_map).ok()
-        };
 
-        let body_text = match response.text() {
-            Ok(text) => text,
-            Err(_) => return Ok(Err(imports::IfaceError::Unavailable)),
-        };
-        let body = if body_text.is_empty() {
-            None
-        } else {
-            Some(body_text)
-        };
-
-        Ok(Ok(imports::HttpResponse {
-            status,
-            headers_json,
-            body,
-        }))
+        match response.bytes() {
+            Ok(bytes) => Ok(Ok(bytes.to_vec())),
+            Err(err) => Ok(Err(format!("body: {err}"))),
+        }
     }
+
+    fn secret_get(&mut self, _name: String) -> wasmtime::Result<Result<String, String>> {
+        Ok(Err("secrets-disabled".into()))
+    }
+
+    fn kv_get(&mut self, _ns: String, _key: String) -> wasmtime::Result<Option<String>> {
+        Ok(None)
+    }
+
+    fn kv_put(&mut self, _ns: String, _key: String, _val: String) -> wasmtime::Result<()> {
+        Ok(())
+    }
+}
+
+fn apply_headers(
+    mut builder: reqwest::blocking::RequestBuilder,
+    headers: &[String],
+) -> Result<reqwest::blocking::RequestBuilder, String> {
+    use reqwest::header::{HeaderName, HeaderValue};
+
+    for header in headers {
+        let (name, value) = header
+            .split_once(':')
+            .ok_or_else(|| format!("invalid-header:{header}"))?;
+        let header_name = HeaderName::from_bytes(name.trim().as_bytes())
+            .map_err(|_| format!("invalid-header-name:{}", name.trim()))?;
+        let header_value = HeaderValue::from_str(value.trim())
+            .map_err(|_| format!("invalid-header-value:{header}"))?;
+        builder = builder.header(header_name, header_value);
+    }
+
+    Ok(builder)
 }
 
 fn try_mock_json(bytes: &[u8], action: &str) -> Option<Result<Value, RunnerError>> {
@@ -323,62 +232,30 @@ fn try_mock_json(bytes: &[u8], action: &str) -> Option<Result<Value, RunnerError
 #[cfg(test)]
 mod tests {
     use super::*;
-    use greentic_types::{EnvId, TenantCtx, TenantId};
-
-    fn sample_tenant() -> TenantCtx {
-        TenantCtx {
-            env: EnvId("dev".into()),
-            tenant: TenantId("tenant".into()),
-            tenant_id: TenantId("tenant".into()),
-            team: None,
-            team_id: None,
-            user: None,
-            user_id: None,
-            trace_id: Some("trace-123".into()),
-            correlation_id: None,
-            deadline: None,
-            attempt: 0,
-            idempotency_key: None,
-            impersonation: None,
-        }
-    }
-
     #[test]
-    fn secrets_get_defaults_to_not_found() {
-        let tenant = sample_tenant();
-        let mut state = StoreState::new(true, Some(&tenant));
-
+    fn http_request_requires_flag() {
+        let mut state = StoreState::new(false);
         let result = state
-            .secrets_get("api-key".into(), None)
-            .expect("host call should succeed");
-        assert!(matches!(result, Err(imports::IfaceError::NotFound)));
+            .http_request("GET".into(), "https://example.com".into(), Vec::new(), None)
+            .expect("request should run");
+        assert!(matches!(result, Err(err) if err == "http-disabled"));
     }
 
     #[test]
-    fn http_fetch_requires_http_flag() {
-        let tenant = sample_tenant();
-        let mut state = StoreState::new(false, Some(&tenant));
-
-        let request = imports::HttpRequest {
-            method: "GET".into(),
-            url: "https://example.com".into(),
-            headers_json: None,
-            body: None,
-        };
-
+    fn http_request_rejects_invalid_method() {
+        let mut state = StoreState::new(true);
         let result = state
-            .http_fetch(request, None)
-            .expect("host call should succeed");
-        assert!(matches!(result, Err(imports::IfaceError::Denied)));
+            .http_request("???".into(), "https://example.com".into(), Vec::new(), None)
+            .expect("request should run");
+        assert!(matches!(result, Err(err) if err == "invalid-method"));
     }
 
     #[test]
-    fn telemetry_emit_accepts_payload() {
-        let tenant = sample_tenant();
-        let mut state = StoreState::new(true, Some(&tenant));
-
-        state
-            .telemetry_emit("{\"event\":\"test\"}".into(), None)
-            .expect("telemetry should succeed");
+    fn secret_get_is_disabled() {
+        let mut state = StoreState::new(true);
+        let result = state
+            .secret_get("api-key".into())
+            .expect("call should succeed");
+        assert!(matches!(result, Err(err) if err == "secrets-disabled"));
     }
 }

@@ -9,3 +9,8 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
+
+[features]
+default = ["describe-v1", "runner-host-v1"]
+describe-v1 = []
+runner-host-v1 = []

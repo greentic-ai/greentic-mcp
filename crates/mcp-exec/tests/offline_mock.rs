@@ -25,6 +25,7 @@ fn offline_mock_describe_and_list() {
     assert!(tools.iter().any(|t| t.name == "mock_tool"));
 
     let describe = describe_tool("mock_tool", &cfg).unwrap();
+    assert!(describe.describe_v1.is_none());
 
     match describe.capabilities {
         Maybe::Data(caps) => {

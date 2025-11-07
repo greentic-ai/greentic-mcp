@@ -42,7 +42,23 @@ fn online_weather_list_and_describe() {
         }
     };
 
-    match describe.capabilities {
+    let mcp_exec::describe::ToolDescribe {
+        describe_v1,
+        capabilities,
+        secrets,
+        config_schema,
+    } = describe;
+
+    if let Some(doc) = describe_v1 {
+        assert!(doc.get("name").is_some(), "describe-json should set a name");
+        assert!(
+            doc.get("versions").is_some(),
+            "describe-json should include versions"
+        );
+        return;
+    }
+
+    match capabilities {
         Maybe::Data(caps) => {
             assert!(
                 !caps.is_empty(),
@@ -55,10 +71,10 @@ fn online_weather_list_and_describe() {
         }
     }
 
-    if let Maybe::Data(secrets) = describe.secrets {
+    if let Maybe::Data(secrets) = secrets {
         assert!(secrets.is_array() || secrets.is_object());
     }
-    if let Maybe::Data(schema) = describe.config_schema {
+    if let Maybe::Data(schema) = config_schema {
         assert!(schema.is_object());
     }
 }

@@ -10,7 +10,14 @@ The crate leans on the shared contracts published in
 generated bindings in [`greentic-interfaces`](https://docs.rs/greentic-interfaces).
 Tools are compiled for the WASI Preview2 target (`wasm32-wasip2`) and export a
 canonical entrypoint that accepts and returns UTF-8 JSON payloads, so hosts no
-longer have to marshal pointer/length pairs manually.
+longer have to marshal pointer/length pairs manually. When tools additionally
+export the `greentic:component/component@1.0.0` world, the bridge calls
+`describe-json` to fetch the node schema/defaults that live with the tool
+component rather than mirroring them in this repository.
+
+Runtime callbacks (HTTP, secrets, KV) are satisfied through the
+`runner-host-v1` helpers shipped by `greentic-interfaces`, which keeps the host
+implementation aligned with the latest Greentic runner contracts.
 
 ## Tool map configuration
 
@@ -56,4 +63,4 @@ timeouts into `McpError::Timeout`.
 See [ABI.md](ABI.md) for the exact contract implemented by the integration
 tests. When a tool exports the richer Greentic component API, use the bindings
 from `greentic-interfaces` to avoid manual JSON marshalling and to work with
-strongly-typed `Outcome<T>` values.
+the `describe-v1`/`runner-host-v1` WIT worlds directly.

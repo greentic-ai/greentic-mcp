@@ -2,8 +2,9 @@
 
 The long-term contract for Greentic MCP tools is the component world described
 in [`greentic-interfaces`](https://docs.rs/greentic-interfaces). Hosts can call
-the generated bindings to invoke the `component-api::invoke` function and work
-directly with `TenantCtx` and `Outcome<T>` structs from `greentic-types`.
+the generated bindings to invoke the `component-api::invoke` function, fulfill
+the `runner-host-v1` imports (HTTP/secrets/KV), and query `describe-json` so
+schema/default metadata stays bundled with each component.
 
 Until every tool is published with those bindings, the executor supports a
 lightweight Preview2 component ABI that trades in UTF-8 JSON strings instead of
@@ -22,4 +23,5 @@ world tool {
   policy.
 
 When the full Greentic component export is available it takes precedence over
-this string-based entrypoint.
+this string-based entrypoint and enables both `describe-v1` and the richer
+host callback set.

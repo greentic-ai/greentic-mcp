@@ -60,7 +60,8 @@ Key features:
 
 - **Resolver** – Reads Wasm bytes from local directories or single-file HTTP sources (with caching).
 - **Verifier** – Checks digest/signature policy before execution.
-- **Runner** – Spins up a Wasmtime component environment, registers Greentic host imports, and calls the tool's MCP `exec` export.
+- **Describe bridge** – Calls the `greentic:component/component@1.0.0` describe world when tools implement it, surfacing schema/default metadata directly from each component.
+- **Runner** – Spins up a Wasmtime component environment, registers the `runner-host-v1` imports from `greentic-interfaces`, and calls the tool's MCP `exec` export.
 - **Errors** – Structured error types map resolution, verification, and runtime failures to caller-friendly variants.
 
 ### `mcp-component`
@@ -73,6 +74,10 @@ expanded alongside the executor.
 
 Pulled from crates.io; provides `TenantCtx`, identifiers, and supporting types for multi-tenant flows.
 
+### Schema ownership
+
+MCP node configuration schemas ship with the Wasm component that implements the tool. Each component is responsible for returning a `describe-json` payload (matching [`greentic:component@1.0.0`](https://docs.rs/greentic-interfaces)) that includes its schema/defaults. This repository only bridges the runtime protocol and does not try to duplicate per-tool JSON schemas.
+
 ## Development
 
 ```bash
@@ -84,6 +89,18 @@ RUN_ONLINE_TESTS=1 cargo test -p mcp-exec --test online_weather
 ```
 
 The online weather integration test is skipped unless `RUN_ONLINE_TESTS=1` is set.
+
+## Local checks
+
+Run `ci/local_check.sh` before pushing to mirror the CI matrix locally. Helpful
+toggles:
+
+- `LOCAL_CHECK_ONLINE=1` – enable the networked weather test.
+- `LOCAL_CHECK_STRICT=1` – treat skipped optional steps/tools as failures.
+- `LOCAL_CHECK_VERBOSE=1` – echo each command.
+
+The script will install a lightweight `pre-push` hook (if one is not already
+present) so future pushes automatically run the same checks.
 
 ## Releases & Publishing
 

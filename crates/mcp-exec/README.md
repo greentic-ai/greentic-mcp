@@ -9,8 +9,8 @@ HTTP fetch.
 
 - Local and remote (HTTP) tool stores with SHA-256 integrity checks.
 - Signature policy stubs ready for digest/signature enforcement.
-- Wasmtime component runtime with Greentic host imports wired in.
-- Utility helpers for describing tools via conventional actions.
+- Wasmtime component runtime with the `runner-host-v1` imports from `greentic-interfaces` wired in.
+- Describe helpers that prefer the `greentic:component/component@1.0.0` world and fall back to legacy actions.
 
 ## Usage
 
@@ -67,3 +67,7 @@ cargo test
 
 Set `RUN_ONLINE_TESTS=1` to exercise the live weather integration test that
 retrieves the published Wasm component over HTTPS.
+
+MCP node schemas live with the component crate itself. When a tool exports
+`describe-json`, `mcp-exec` forwards that blob upstream so flows can validate
+against the component-owned schema/defaults instead of mirroring JSON locally.

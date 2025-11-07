@@ -21,6 +21,16 @@ jobs:
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test -- --nocapture
 
+  feature-builds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.91.0
+      - run: cargo build --locked --features "describe-v1,runner-host-v1"
+      - run: cargo test --locked --features "describe-v1,runner-host-v1"
+
   online:
     if: github.event_name == 'schedule' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
