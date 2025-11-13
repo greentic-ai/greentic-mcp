@@ -49,7 +49,7 @@ fn tool_ref(name: &str) -> Option<ToolRef> {
         name: name.into(),
         component: wasm.to_string_lossy().into_owned(),
         entry: "tool-invoke".into(),
-        timeout_ms: Some(1_000),
+        timeout_ms: Some(15_000),
         max_retries: Some(2),
         retry_backoff_ms: Some(25),
     })

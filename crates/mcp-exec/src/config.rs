@@ -32,6 +32,9 @@ pub struct RuntimePolicy {
     pub fuel: Option<u64>,
     pub max_memory: Option<u64>,
     pub wallclock_timeout: Duration,
+    pub per_call_timeout: Duration,
+    pub max_attempts: u32,
+    pub base_backoff: Duration,
 }
 
 impl Default for RuntimePolicy {
@@ -40,6 +43,9 @@ impl Default for RuntimePolicy {
             fuel: None,
             max_memory: None,
             wallclock_timeout: Duration::from_secs(30),
+            per_call_timeout: Duration::from_secs(10),
+            max_attempts: 1,
+            base_backoff: Duration::from_millis(100),
         }
     }
 }

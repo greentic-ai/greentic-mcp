@@ -1,5 +1,6 @@
 //! Runtime integration with Wasmtime for invoking the MCP component entrypoint.
 
+use std::thread;
 use std::time::Instant;
 
 use greentic_interfaces::runner_host_v1::{self as runner_host, RunnerHost};
@@ -11,6 +12,9 @@ use crate::ExecRequest;
 use crate::config::RuntimePolicy;
 use crate::error::RunnerError;
 use crate::verify::VerifiedArtifact;
+use tokio::runtime::Builder;
+use tokio::task;
+use tokio::time::timeout;
 
 pub struct ExecutionContext<'a> {
     pub runtime: &'a RuntimePolicy,
@@ -52,45 +56,87 @@ impl Runner for DefaultRunner {
         artifact: &VerifiedArtifact,
         ctx: ExecutionContext<'_>,
     ) -> Result<Value, RunnerError> {
-        let component = match Component::from_binary(&self.engine, artifact.resolved.bytes.as_ref())
-        {
-            Ok(component) => component,
-            Err(err) => {
-                if let Some(result) =
-                    try_mock_json(artifact.resolved.bytes.as_ref(), &request.action)
-                {
-                    return result;
+        let engine = self.engine.clone();
+        let request = request.clone();
+        let artifact = artifact.clone();
+        let runtime = ctx.runtime.clone();
+        let http_enabled = ctx.http_enabled;
+        let timeout_duration = runtime.per_call_timeout;
+
+        let tokio_runtime = Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|err| {
+                RunnerError::Internal(format!("failed to build timeout runtime: {err}"))
+            })?;
+
+        let future = async move {
+            let run_future = async {
+                let handle = task::spawn_blocking(move || {
+                    run_sync(engine, request, artifact, runtime, http_enabled)
+                });
+                match handle.await {
+                    Ok(result) => result,
+                    Err(err) => Err(RunnerError::Internal(format!(
+                        "blocking runner task failed: {err}"
+                    ))),
                 }
-                return Err(err.into());
+            };
+
+            match timeout(timeout_duration, run_future).await {
+                Ok(result) => result,
+                Err(_) => Err(RunnerError::Timeout {
+                    elapsed: timeout_duration,
+                }),
             }
         };
-        let mut linker = Linker::new(&self.engine);
-        linker.allow_shadowing(true);
-        // Register Greentic host imports so MCP tools can call back into
-        // secrets, telemetry, and HTTP helpers. Each import is handled by the
-        // `HostImports` implementation on `StoreState` with conservative
-        // defaults that keep the executor safe to embed.
-        runner_host::add_to_linker(&mut linker, |state: &mut StoreState| state)
-            .map_err(RunnerError::from)?;
 
-        let mut store = Store::new(&self.engine, StoreState::new(ctx.http_enabled));
-
-        let instance = linker.instantiate(&mut store, &component)?;
-        let exec = instance.get_typed_func::<(String, String), (String,)>(&mut store, "exec")?;
-
-        let args_json = serde_json::to_string(&request.args)?;
-        let started = Instant::now();
-        let (raw_response,) = exec.call(&mut store, (request.action.clone(), args_json))?;
-
-        if started.elapsed() > ctx.runtime.wallclock_timeout {
-            return Err(RunnerError::Timeout {
-                elapsed: started.elapsed(),
-            });
+        match thread::spawn(move || tokio_runtime.block_on(future)).join() {
+            Ok(result) => result,
+            Err(err) => Err(RunnerError::Internal(format!("runtime panicked: {err:?}"))),
         }
-
-        let value: Value = serde_json::from_str(&raw_response)?;
-        Ok(value)
     }
+}
+
+fn run_sync(
+    engine: Engine,
+    request: ExecRequest,
+    artifact: VerifiedArtifact,
+    runtime: RuntimePolicy,
+    http_enabled: bool,
+) -> Result<Value, RunnerError> {
+    let component = match Component::from_binary(&engine, artifact.resolved.bytes.as_ref()) {
+        Ok(component) => component,
+        Err(err) => {
+            if let Some(result) = try_mock_json(artifact.resolved.bytes.as_ref(), &request.action) {
+                return result;
+            }
+            return Err(err.into());
+        }
+    };
+
+    let mut linker = Linker::new(&engine);
+    linker.allow_shadowing(true);
+    runner_host::add_to_linker(&mut linker, |state: &mut StoreState| state)
+        .map_err(RunnerError::from)?;
+
+    let mut store = Store::new(&engine, StoreState::new(http_enabled));
+
+    let instance = linker.instantiate(&mut store, &component)?;
+    let exec = instance.get_typed_func::<(String, String), (String,)>(&mut store, "exec")?;
+
+    let args_json = serde_json::to_string(&request.args)?;
+    let started = Instant::now();
+    let (raw_response,) = exec.call(&mut store, (request.action.clone(), args_json))?;
+
+    if started.elapsed() > runtime.wallclock_timeout {
+        return Err(RunnerError::Timeout {
+            elapsed: started.elapsed(),
+        });
+    }
+
+    let value: Value = serde_json::from_str(&raw_response)?;
+    Ok(value)
 }
 
 struct StoreState {

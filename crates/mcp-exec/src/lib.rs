@@ -11,13 +11,12 @@ mod store;
 mod verify;
 
 pub use config::{ExecConfig, RuntimePolicy, VerifyPolicy};
-pub use error::ExecError;
+pub use error::{ExecError, RunnerError};
 pub use store::{ToolInfo, ToolStore};
 
 use greentic_types::TenantCtx;
 use serde_json::Value;
 
-use crate::error::RunnerError;
 use crate::runner::Runner;
 
 #[derive(Clone, Debug)]
