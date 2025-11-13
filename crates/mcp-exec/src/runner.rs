@@ -4,10 +4,12 @@ use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::Instant;
 
-use greentic_interfaces::runner_host_v1::{self as runner_host, RunnerHost};
+use greentic_interfaces::runner_host_v1::RunnerHost;
 use serde_json::Value;
-use wasmtime::component::{Component, Linker};
+use wasmtime::component::{Component, Linker, ResourceTable};
 use wasmtime::{Engine, Store};
+use wasmtime_wasi::p2;
+use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 
 use crate::ExecRequest;
 use crate::config::RuntimePolicy;
@@ -97,9 +99,8 @@ fn run_sync(
 
     let mut linker = Linker::new(&engine);
     linker.allow_shadowing(true);
-    runner_host::add_to_linker(&mut linker, |state: &mut StoreState| state)
-        .map_err(RunnerError::from)?;
-
+    p2::add_to_linker_sync(&mut linker)
+        .map_err(|err| RunnerError::Internal(format!("failed to link WASI imports: {err}")))?;
     let mut store = Store::new(&engine, StoreState::new(http_enabled));
 
     let instance = linker.instantiate(&mut store, &component)?;
@@ -134,13 +135,21 @@ fn run_sync(
 struct StoreState {
     http_enabled: bool,
     http_client: Option<reqwest::blocking::Client>,
+    ctx: WasiCtx,
+    table: ResourceTable,
 }
 
 impl StoreState {
     fn new(http_enabled: bool) -> Self {
+        let mut builder = WasiCtxBuilder::new();
+        builder.inherit_stdio();
+        builder.inherit_env();
+        builder.allow_blocking_current_thread(true);
         Self {
             http_enabled,
             http_client: None,
+            ctx: builder.build(),
+            table: ResourceTable::new(),
         }
     }
 
@@ -161,6 +170,15 @@ impl StoreState {
         }
 
         Ok(self.http_client.as_ref().expect("client initialized"))
+    }
+}
+
+impl WasiView for StoreState {
+    fn ctx(&mut self) -> WasiCtxView<'_> {
+        WasiCtxView {
+            ctx: &mut self.ctx,
+            table: &mut self.table,
+        }
     }
 }
 

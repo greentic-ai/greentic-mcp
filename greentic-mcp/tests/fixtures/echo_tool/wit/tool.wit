@@ -1,5 +1,0 @@
-package greentic:echo;
-
-world tool {
-    export tool-invoke: func(input: string) -> string;
-}

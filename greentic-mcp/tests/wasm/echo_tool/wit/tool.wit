@@ -1,0 +1,5 @@
+package greentic:tool;
+
+world tool {
+    export exec: func(action: string, args: string) -> string;
+}
