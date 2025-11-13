@@ -10,8 +10,6 @@ wit_bindgen::generate!({
     world: "tool",
 });
 
-use bindings::exports::greentic::echo::tool::Guest;
-
 struct EchoTool;
 
 impl Guest for EchoTool {
@@ -37,4 +35,4 @@ impl Guest for EchoTool {
     }
 }
 
-bindings::export!(EchoTool);
+export!(EchoTool);
