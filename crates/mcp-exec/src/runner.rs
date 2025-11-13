@@ -1,5 +1,6 @@
 //! Runtime integration with Wasmtime for invoking the MCP component entrypoint.
 
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::Instant;
 
@@ -12,10 +13,6 @@ use crate::ExecRequest;
 use crate::config::RuntimePolicy;
 use crate::error::RunnerError;
 use crate::verify::VerifiedArtifact;
-use tokio::runtime::Builder;
-use tokio::task;
-use tokio::time::timeout;
-
 pub struct ExecutionContext<'a> {
     pub runtime: &'a RuntimePolicy,
     pub http_enabled: bool,
@@ -63,37 +60,20 @@ impl Runner for DefaultRunner {
         let http_enabled = ctx.http_enabled;
         let timeout_duration = runtime.per_call_timeout;
 
-        let tokio_runtime = Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|err| {
-                RunnerError::Internal(format!("failed to build timeout runtime: {err}"))
-            })?;
+        let (tx, rx) = mpsc::channel();
+        thread::spawn(move || {
+            let res = run_sync(engine, request, artifact, runtime, http_enabled);
+            let _ = tx.send(res);
+        });
 
-        let future = async move {
-            let run_future = async {
-                let handle = task::spawn_blocking(move || {
-                    run_sync(engine, request, artifact, runtime, http_enabled)
-                });
-                match handle.await {
-                    Ok(result) => result,
-                    Err(err) => Err(RunnerError::Internal(format!(
-                        "blocking runner task failed: {err}"
-                    ))),
-                }
-            };
-
-            match timeout(timeout_duration, run_future).await {
-                Ok(result) => result,
-                Err(_) => Err(RunnerError::Timeout {
-                    elapsed: timeout_duration,
-                }),
-            }
-        };
-
-        match thread::spawn(move || tokio_runtime.block_on(future)).join() {
+        match rx.recv_timeout(timeout_duration) {
             Ok(result) => result,
-            Err(err) => Err(RunnerError::Internal(format!("runtime panicked: {err:?}"))),
+            Err(RecvTimeoutError::Timeout) => Err(RunnerError::Timeout {
+                elapsed: timeout_duration,
+            }),
+            Err(RecvTimeoutError::Disconnected) => {
+                Err(RunnerError::Internal("blocking runner task failed".into()))
+            }
         }
     }
 }
@@ -127,7 +107,19 @@ fn run_sync(
 
     let args_json = serde_json::to_string(&request.args)?;
     let started = Instant::now();
-    let (raw_response,) = exec.call(&mut store, (request.action.clone(), args_json))?;
+    let (raw_response,) = match exec.call(&mut store, (request.action.clone(), args_json)) {
+        Ok(result) => result,
+        Err(trap) => {
+            let msg = trap.to_string();
+            if msg.contains("transient.") {
+                return Err(RunnerError::ToolTransient {
+                    component: request.component.clone(),
+                    message: msg,
+                });
+            }
+            return Err(RunnerError::Internal(msg));
+        }
+    };
 
     if started.elapsed() > runtime.wallclock_timeout {
         return Err(RunnerError::Timeout {

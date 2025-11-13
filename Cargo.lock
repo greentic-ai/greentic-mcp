@@ -783,12 +783,13 @@ dependencies = [
 
 [[package]]
 name = "greentic-mcp"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "greentic-interfaces",
  "greentic-types",
  "indexmap",
+ "mcp-exec",
  "rand 0.9.2",
  "serde",
  "serde_json",
@@ -1225,11 +1226,11 @@ checksum = "4facc753ae494aeb6e3c22f839b158aebd4f9270f55cd3c79906c45476c47ab4"
 
 [[package]]
 name = "mcp-component"
-version = "0.3.1"
+version = "0.3.2"
 
 [[package]]
 name = "mcp-exec"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "async-trait",

@@ -15,7 +15,7 @@ pub use error::{ExecError, RunnerError};
 pub use store::{ToolInfo, ToolStore};
 
 use greentic_types::TenantCtx;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::runner::Runner;
 
@@ -56,6 +56,20 @@ pub fn exec(req: ExecRequest, cfg: &ExecConfig) -> Result<Value, ExecError> {
             return Err(ExecError::not_found(
                 req.component.clone(),
                 req.action.clone(),
+            ));
+        }
+        Err(RunnerError::ToolTransient { component, message }) => {
+            return Err(ExecError::tool_error(
+                component,
+                req.action.clone(),
+                "transient",
+                json!({ "message": message }),
+            ));
+        }
+        Err(RunnerError::Internal(message)) => {
+            return Err(ExecError::runner(
+                &req.component,
+                RunnerError::Internal(message),
             ));
         }
         Err(err) => return Err(ExecError::runner(&req.component, err)),

@@ -110,6 +110,8 @@ pub enum RunnerError {
     Serde(#[from] serde_json::Error),
     #[error("action `{action}` not implemented by the tool")]
     ActionNotFound { action: String },
+    #[error("tool `{component}` transient failure: {message}")]
+    ToolTransient { component: String, message: String },
     #[error("internal runner error: {0}")]
     Internal(String),
     #[error("runner is not implemented for this configuration")]
