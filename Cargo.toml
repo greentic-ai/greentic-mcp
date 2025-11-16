@@ -31,3 +31,4 @@ greentic-interfaces = { version = "0.4", default-features = false, features = ["
 indexmap = "2"
 rand = { version = "0.9", features = ["std"] }
 serde_yaml_bw = "2"
+mcp-exec = { version = "0.4.0", path = "crates/mcp-exec" }
