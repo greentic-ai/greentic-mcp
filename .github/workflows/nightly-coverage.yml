@@ -28,7 +28,21 @@ jobs:
         with:
           tool: cargo-binstall
       - name: Install coverage tooling
+        # binstall resolves prebuilt artifacts through api.github.com. Anonymous
+        # requests are rate-limited per runner IP, and on a 403 binstall does not
+        # fail: it silently degrades to the `compile` strategy, i.e.
+        # `cargo install <tool>` WITHOUT --locked. cargo-nextest ships a
+        # deliberate compile_error! that rejects exactly that build, so the real
+        # rate-limit failure surfaces much later as a confusing compile error.
+        # GITHUB_TOKEN lifts the rate limit; --disable-strategies compile makes
+        # any remaining resolution failure loud and immediate instead of silent.
+        # Root-caused and fixed the same way in greenticai/greentic-cap PR #39.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cargo binstall --no-confirm cargo-llvm-cov cargo-nextest
+          cargo binstall --no-confirm --disable-strategies compile \
+            cargo-llvm-cov cargo-nextest
+          command -v cargo-llvm-cov
+          command -v cargo-nextest
       - name: Run coverage
         run: greentic-dev coverage
