@@ -9,8 +9,22 @@ permissions:
   contents: read
 
 jobs:
+  # `greenticai/.github` has no `ci.yml` — that filename only ever existed as
+  # this repo's own `.github/workflows/ci.yml`. Referencing it under the org
+  # path made the whole workflow unresolvable, so GitHub rejected it at
+  # startup: every scheduled run since 2026-04-10 finished in 0s with
+  # `total_count: 0` jobs and no logs, and `workflow_dispatch` was refused with
+  # HTTP 422. The coverage job below has therefore never executed once.
+  #
+  # `host-crate-ci.yml` is the org's host-crate CI reusable and the target used
+  # by all three other repos carrying this same `setup`-gate shape
+  # (greentic-i18n, greentic-setup, greentic-distributor-client). Its defaults
+  # resolve to exactly the clippy/test invocations this repo's own green
+  # `ci.yml` already runs via `pr-ci.yml` with `variant: host`
+  # (`--workspace --all-targets --all-features -- -D warnings` and
+  # `--workspace --all-features`), so no `with:` block is needed.
   setup:
-    uses: greenticai/.github/.github/workflows/ci.yml@main
+    uses: greenticai/.github/.github/workflows/host-crate-ci.yml@main
     secrets: inherit
 
   coverage:
@@ -39,10 +53,15 @@ jobs:
         # Root-caused and fixed the same way in greenticai/greentic-cap PR #39.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        #
+        # greentic-dev provides the `greentic-dev coverage` wrapper the final
+        # step invokes. It was never installed here — the startup failure above
+        # meant that was never observable. Every sibling repo binstalls it.
         run: |
           cargo binstall --no-confirm --disable-strategies compile \
-            cargo-llvm-cov cargo-nextest
+            cargo-llvm-cov cargo-nextest greentic-dev
           command -v cargo-llvm-cov
           command -v cargo-nextest
+          command -v greentic-dev
       - name: Run coverage
         run: greentic-dev coverage
