@@ -51,12 +51,12 @@ jobs:
         # GITHUB_TOKEN lifts the rate limit; --disable-strategies compile makes
         # any remaining resolution failure loud and immediate instead of silent.
         # Root-caused and fixed the same way in greenticai/greentic-cap PR #39.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         #
         # greentic-dev provides the `greentic-dev coverage` wrapper the final
         # step invokes. It was never installed here — the startup failure above
         # meant that was never observable. Every sibling repo binstalls it.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cargo binstall --no-confirm --disable-strategies compile \
             cargo-llvm-cov cargo-nextest greentic-dev
