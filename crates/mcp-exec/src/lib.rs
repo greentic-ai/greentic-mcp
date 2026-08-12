@@ -29,6 +29,20 @@ pub struct ToolDef {
     pub name: String,
     pub description: String,
     pub input_schema: Value,
+    /// JSON Schema for what the tool RETURNS, when the component declares one.
+    ///
+    /// `output-schema` is `option<json>` in the WIT and that optionality is
+    /// carried through unchanged: an undeclared schema stays `None` rather than
+    /// collapsing into an empty object. A consumer asking "what fields does this
+    /// tool return?" needs "not declared" and "declared empty" to differ, and
+    /// the same contract is already shipped in greentic-mcp-client and
+    /// greentic-designer — all three hops have to agree or the distinction is
+    /// lost at whichever one disagrees.
+    ///
+    /// Why this matters: a flow referenced `{{node.mcp_quote.outputs.…}}` and
+    /// another `{{node.mcp_quote.…}}`, and both rendered blank with no error,
+    /// because a tool's real field names were unknowable to every layer above.
+    pub output_schema: Option<Value>,
 }
 
 #[derive(Clone, Debug)]
@@ -140,10 +154,73 @@ pub fn list_tools(component: &str, cfg: &ExecConfig) -> Result<Vec<ToolDef>, Exe
         .map(|t| ToolDef {
             name: t.name,
             description: t.description,
+            // Pre-existing behaviour, deliberately left alone: a malformed
+            // *input* schema still degrades to `{}`. Changing that is a
+            // separate call from this one.
             input_schema: serde_json::from_str(&t.input_schema)
                 .unwrap_or_else(|_| serde_json::json!({})),
+            // A malformed *output* schema is kept verbatim as
+            // `Value::String(raw)` instead of being normalised away — this
+            // crate reports what the component declared, and a consumer that
+            // cares can see it and warn. Matches the 1.3 research line's
+            // `parse_json_payload`, so the two lanes do not drift.
+            output_schema: t.output_schema.as_deref().map(|raw| {
+                serde_json::from_str(raw).unwrap_or_else(|_| Value::String(raw.to_string()))
+            }),
         })
         .collect())
+}
+
+#[cfg(test)]
+mod output_schema_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// The mapping the 1.1.x line performs on a router tool record. Kept as a
+    /// pure fn so the three decisions below are testable without a wasm
+    /// fixture — the integration path needs a built component, and on this lane
+    /// the fixture harness silently skips when `CARGO_TARGET_DIR` is set, which
+    /// makes it the wrong place to pin a contract.
+    fn map_output_schema(raw: Option<&str>) -> Option<Value> {
+        raw.map(|raw| serde_json::from_str(raw).unwrap_or_else(|_| Value::String(raw.to_string())))
+    }
+
+    /// A declared schema must survive — this is the whole point: without it a
+    /// tool's field names are unknowable to every layer above.
+    #[test]
+    fn a_declared_output_schema_is_parsed() {
+        let got = map_output_schema(Some(
+            r#"{"type":"object","properties":{"annual_premium":{"type":"number"}}}"#,
+        ));
+        assert_eq!(
+            got.as_ref()
+                .and_then(|v| v.pointer("/properties/annual_premium/type")),
+            Some(&json!("number")),
+            "got {got:?}"
+        );
+    }
+
+    /// `output-schema` is `option<json>` in the WIT, so absent is normal — and
+    /// must stay distinguishable from a component that declared an empty
+    /// schema. greentic-mcp-client and greentic-designer settled on the same
+    /// contract; if this lane collapsed absent into `{}` the distinction would
+    /// be lost here and nowhere else.
+    #[test]
+    fn an_undeclared_output_schema_stays_none() {
+        assert_eq!(map_output_schema(None), None);
+    }
+
+    /// Malformed is kept verbatim as evidence rather than normalised away: this
+    /// crate reports what the component declared, and a consumer that cares can
+    /// see it and warn. Swallowing it here would hide a broken component from
+    /// every consumer at once.
+    #[test]
+    fn a_malformed_output_schema_is_kept_verbatim() {
+        assert_eq!(
+            map_output_schema(Some("not-json")),
+            Some(Value::String("not-json".to_string()))
+        );
+    }
 }
 
 #[cfg(test)]
