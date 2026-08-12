@@ -82,3 +82,55 @@ fn list_tools_returns_router_echo_tools() {
         "schema parsed to JSON object"
     );
 }
+
+/// End-to-end proof that a tool's declared `output-schema` survives the WIT
+/// boundary: the fixture declares one on `quote` and none on `echo`, and both
+/// answers must arrive intact. Without this, a caller cannot learn which
+/// fields an mcp node's result actually carries.
+#[test]
+fn list_tools_carries_a_declared_output_schema_and_leaves_an_undeclared_one_absent() {
+    let Some(dir) = build_router_echo() else {
+        return;
+    };
+
+    let cfg = ExecConfig {
+        store: ToolStore::LocalDir(dir),
+        security: VerifyPolicy {
+            allow_unverified: true,
+            required_digests: HashMap::new(),
+            trusted_signers: Vec::new(),
+        },
+        runtime: RuntimePolicy::default(),
+        http_enabled: false,
+        secrets_store: None,
+    };
+
+    let tools = list_tools("router_echo", &cfg).expect("list_tools ok");
+
+    let quote = tools
+        .iter()
+        .find(|t| t.name == "quote")
+        .expect("expected a `quote` tool");
+    assert_eq!(
+        quote
+            .output_schema
+            .as_ref()
+            .and_then(|s| s.get("properties"))
+            .and_then(|p| p.get("annual_premium"))
+            .and_then(|f| f.get("type"))
+            .and_then(|t| t.as_str()),
+        Some("number"),
+        "declared output schema crossed the WIT boundary: {:?}",
+        quote.output_schema
+    );
+
+    let echo = tools
+        .iter()
+        .find(|t| t.name == "echo")
+        .expect("expected an `echo` tool");
+    assert!(
+        echo.output_schema.is_none(),
+        "a tool declaring no output schema stays absent, got {:?}",
+        echo.output_schema
+    );
+}
